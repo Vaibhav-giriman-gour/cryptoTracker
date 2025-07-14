@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // --- Points to the backend server port
-const BASE_URL = "http://localhost:5000";
+const BASE_URL = "https://cryptotracker-ugqk.onrender.com";
 
 // --- API call using Axios
 const api = axios.create({
