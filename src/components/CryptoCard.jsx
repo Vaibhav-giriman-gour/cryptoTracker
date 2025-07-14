@@ -49,7 +49,7 @@ const CryptoCard = ({ crypto }) => {
       </div>
       {/* 7-Day changes*/}
       <div className="w-full text-center mb-2">
-        <p className="text-sm text-gray-400">24h Change:</p>
+        <p className="text-sm text-gray-400">7d Change:</p>
         {/* Apply color and percentage for the cryptocurrencies*/}
         <p
           className={`text-md font-medium ${getChangeColor(percent_change_7d)}`}
