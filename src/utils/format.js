@@ -7,7 +7,7 @@ export const formatCurrency = (value) => {
     style: "currency", // --- Format as currency
     currency: "USD", // --- Use US Dollar currency code
     minimumFractionDigits: 2, // --- Always show at least two decimal places
-    maximumFractionDigits: 8, // --- Allow up to 8 decimal places for precise crypto values
+    maximumFractionDigits: 2, // --- Allow up to 8 decimal places for precise crypto values
   }).format(value);
 };
 

@@ -32,18 +32,20 @@ export const fetchCryptos = createAsyncThunk(
 // --- This will be used by the CryptoConverter component.
 export const convertCrypto = createAsyncThunk(
     "crypto/convertCrypto",
-    async ({ amount, symbol, convert }, { rejectWithValue }) => {
+    // Changed parameter from `symbol` to `id`
+    async ({ amount, id, convert }, { rejectWithValue }) => {
         try {
-            const response = await getCryptoPriceConversion(amount, symbol, convert);
+            // --- Pass `id` instead of `symbol`
+            const response = await getCryptoPriceConversion(amount, id, convert);
             return response.data.data;
         } catch (error) {
             console.error(
                 "Error Converting the cryptocurrencies:",
                 error.response?.data || error.response
             );
-            return (
-                rejectWithValue(error.response?.data?.status?.error_message ||
-                    "Failed to convert the crypto currencies")
+            return rejectWithValue(
+                error.response?.data?.status?.error_message ||
+                "Failed to convert the crypto currencies"
             );
         }
     }
@@ -100,18 +102,26 @@ const cryptoSlice = createSlice({
             })
             // --- For convertCrypto
             .addCase(convertCrypto.pending, (state) => {
-                state.loading = true; // Set loading to true when the conversion operation starts.
-                state.error = null; // Clear any previous error messages.
-                state.conversionResult = null; // Clear any previous conversion result.
+                state.loading = true;
+                state.error = null;
+                state.conversionResult = null;
             })
             .addCase(convertCrypto.fulfilled, (state, action) => {
                 state.loading = false;
-                state.conversionResult = action.payload;
+                const conversionData = action.payload; // --- This is the single object returned from CMC when using ID
+
+                // --- Check if data exists and contains the conversion quote
+                if (conversionData && conversionData.quote && conversionData.quote[action.meta.arg.convert.toUpperCase()]) {
+                    state.conversionResult = conversionData.quote[action.meta.arg.convert.toUpperCase()].price;
+                } else {
+                    state.conversionResult = null;
+                    state.error = "Could not retrieve conversion price. Please check inputs.";
+                }
             })
             .addCase(convertCrypto.rejected, (state, action) => {
-                state.loading = false
+                state.loading = false;
                 state.conversionResult = null;
-                state.error = action.payload
+                state.error = action.payload;
             });
     },
 });

@@ -29,13 +29,13 @@ export const getLatestCryptoCurr = async () => {
 };
 
 // --- To convert the crypto currencies
-export const getCryptoPriceConversion = async (amount, symbol, convert) => {
+export const getCryptoPriceConversion = async (amount, id, convert) => {
   try {
     // --- Enpoint path on backend (matched: 'api/convert')
     const response = await api.get("/api/convert", {
       params: {
         amount: amount,
-        symbol: symbol, // --- Backend will handle
+        id: id, // --- Backend will handle
         convert: convert // --- Backend will handle
       },
     });

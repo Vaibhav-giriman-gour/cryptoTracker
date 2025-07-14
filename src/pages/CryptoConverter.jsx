@@ -5,42 +5,43 @@ import {
   convertCrypto,
   clearConversionResult,
 } from "../redux/cryptoSlice";
-import { formatCurrency } from "../utils/format";
+import { formatCurrency } from "../utils/format"; // Assuming formatCurrency utility exists
 import Loading from "../components/Loading";
-import ErrorMessage from "../components/ErrorMessage";
-import toast from "react-hot-toast";
+import ErrorMessage from "../components/ErrorMessage"; // Assuming ErrorMessage component exists
+import toast from "react-hot-toast"; // Assuming react-hot-toast is installed
 
 const CryptoConverter = () => {
   const dispatch = useDispatch();
-  const { cryptos, conversionResult, loading, error } = useSelector(
+  const { cryptos, conversionResult, loading, error, allCryptos } = useSelector(
     (state) => state.crypto
   );
 
-  // --- loacal states to manage form inputs
+  // --- Local states to manage form inputs
   const [amount, setAmount] = useState("");
   const [toCurrency, setToCurrency] = useState("USD");
-  const [fromCurrency, setFromCurrency] = useState("");
+  const [selectedFromCryptoId, setSelectedFromCryptoId] = useState("");
+  const [selectedFromCryptoSymbol, setSelectedFromCryptoSymbol] = useState("");
 
   // --- useEffect hook to fetch cryptocurrencies for the dropdowns.
   useEffect(() => {
-    if (cryptos.length === 0) {
+    if (allCryptos.length === 0) {
       dispatch(fetchCryptos());
     }
-  }, [dispatch, cryptos.length]); // --- Dependencies: dispatch (stable), cryptos.length (to re-run if list changes)
+  }, [dispatch, allCryptos.length]);
 
   // --- For Cleanup
   useEffect(() => {
-    // --- The return function acts as a cleanup mechanism
     return () => {
       dispatch(clearConversionResult());
     };
-  }, [dispatch]); // --- Dependency: dispatch (stable)
+  }, [dispatch]);
+
   // --- useEffect to show Redux errors as toasts
   useEffect(() => {
     if (error) {
       toast.error(`API Error: ${error}`);
     }
-  }, [error]); // --- Show toast when Redux 'error' state changes
+  }, [error]);
 
   useEffect(() => {
     if (conversionResult) {
@@ -48,13 +49,23 @@ const CryptoConverter = () => {
     }
   }, [conversionResult]);
 
-  const handleSwapCurrencies = () => {
-    const temp = fromCurrency;
-    setFromCurrency(toCurrency);
-    setToCurrency(temp);
+  const handleFromCurrencyChange = (e) => {
+    const selectedId = e.target.value;
+    setSelectedFromCryptoId(selectedId);
+
+    const selectedCrypto = allCryptos.find(
+      (crypto) => String(crypto.id) === selectedId
+    );
+    if (selectedCrypto) {
+      setSelectedFromCryptoSymbol(selectedCrypto.symbol);
+    } else {
+      setSelectedFromCryptoSymbol("");
+    }
     dispatch(clearConversionResult());
-    toast.dismiss(); // Dismiss any currently visible toasts on swap
   };
+
+  // Removed the handleSwapCurrencies function and its button
+  // as it required a more complex refactor for the ID/symbol separation.
 
   const handleConvert = (e) => {
     e.preventDefault();
@@ -64,7 +75,7 @@ const CryptoConverter = () => {
       toast.error("Please enter a valid amount (a positive number).");
       return;
     }
-    if (!fromCurrency || !toCurrency) {
+    if (!selectedFromCryptoId || !toCurrency) {
       toast.error("Please select both 'From' and 'To' currencies.");
       return;
     }
@@ -73,31 +84,35 @@ const CryptoConverter = () => {
     dispatch(
       convertCrypto({
         amount: parseFloat(amount),
-        symbol: fromCurrency,
+        id: selectedFromCryptoId,
         convert: toCurrency,
       })
     )
-      .unwrap() // --- Use unwrap to handle fulfilled/rejected promises from thunk
+      .unwrap()
       .then(() => {
-        // --- Show success toast only if conversion was successful
         toast.success("Conversion successful!");
       })
       .catch((err) => {
-        if (err.message !== error)
-          toast.error(`Conversion failed: ${err.message}`);
+        // More robust error message display from thunk payload
+        const errorMessage =
+          err.message ||
+          err.status?.error_message ||
+          "An unknown error occurred.";
+        toast.error(`Conversion failed: ${errorMessage}`);
       });
   };
 
   // --- Prepare options for the 'From' currency dropdown.
-  const currencyOptions = cryptos.map((c) => ({
+  const fromCurrencyOptions = allCryptos.map((c) => ({
+    id: c.id,
     symbol: c.symbol,
     name: c.name,
   }));
 
   // --- Prepare options for the 'To' currency dropdown.
   const allConversionOptions = [
-    { symbol: "USD", name: "US Dollar" },
-    ...currencyOptions,
+    { id: "USD", symbol: "USD", name: "US Dollar" }, // Added dummy ID for consistency
+    ...fromCurrencyOptions,
   ];
 
   return (
@@ -121,12 +136,12 @@ const CryptoConverter = () => {
             onChange={(e) => {
               setAmount(e.target.value);
               dispatch(clearConversionResult());
-            }} // --- No need to clear validationMessage here, toasts are transient
+            }}
             placeholder="e.g., 1.5"
             step="any"
             className="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-200 leading-tight
-                       focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent
-                       bg-gray-700 border-gray-600 placeholder-gray-400"
+                         focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent
+                         bg-gray-700 border-gray-600 placeholder-gray-400"
             required
           />
         </div>
@@ -141,52 +156,23 @@ const CryptoConverter = () => {
           </label>
           <select
             id="fromCurrency"
-            value={fromCurrency}
-            onChange={(e) => {
-              setFromCurrency(e.target.value);
-              dispatch(clearConversionResult());
-            }}
+            value={selectedFromCryptoId}
+            onChange={handleFromCurrencyChange}
             className="shadow border rounded-lg w-full py-3 px-4 text-gray-200 leading-tight
-                       focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent
-                       bg-gray-700 border-gray-600"
+                         focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent
+                         bg-gray-700 border-gray-600"
             required
           >
             <option value="">Select currency</option>
-            {cryptos.map((option) => (
-              <option key={option.symbol} value={option.symbol}>
+            {fromCurrencyOptions.map((option) => (
+              <option key={option.id} value={option.id}>
                 {option.name} ({option.symbol})
               </option>
             ))}
           </select>
         </div>
 
-        {/* Swap Currencies Button */}
-        <div className="flex justify-center my-4">
-          <button
-            type="button"
-            onClick={handleSwapCurrencies}
-            className="bg-gray-700 hover:bg-gray-600 text-gray-300 font-bold py-2 px-4 rounded-full
-                       transition duration-300 ease-in-out transform hover:scale-110
-                       focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75
-                       shadow-md"
-            aria-label="Swap currencies"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-              />
-            </svg>
-          </button>
-        </div>
+        {/* Removed Swap Currencies Button */}
 
         {/* To Currency Dropdown */}
         <div>
@@ -204,8 +190,8 @@ const CryptoConverter = () => {
               dispatch(clearConversionResult());
             }}
             className="shadow border rounded-lg w-full py-3 px-4 text-gray-200 leading-tight
-                       focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent
-                       bg-gray-700 border-gray-600"
+                         focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent
+                         bg-gray-700 border-gray-600"
             required
           >
             <option value="">Select currency</option>
@@ -221,9 +207,9 @@ const CryptoConverter = () => {
         <button
           type="submit"
           className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg
-                     transition duration-300 ease-in-out transform hover:scale-105
-                     focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75
-                     shadow-md hover:shadow-lg"
+                       transition duration-300 ease-in-out transform hover:scale-105
+                       focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75
+                       shadow-md hover:shadow-lg"
           disabled={loading}
         >
           {loading ? "Converting..." : "Convert"}
@@ -238,15 +224,13 @@ const CryptoConverter = () => {
           </h3>
           <p className="text-2xl font-bold text-white">
             {formatCurrency(
-              amount *
-                conversionResult?.quote?.[toCurrency.toUpperCase()]?.price
+              amount * conversionResult // <-- This will now correctly use the numerical price
             )}
           </p>
           <p className="text-gray-400 text-sm mt-1">
-            {amount} {fromCurrency} ={" "}
+            {amount} {selectedFromCryptoSymbol} ={" "}
             {formatCurrency(
-              amount *
-                conversionResult?.quote?.[toCurrency.toUpperCase()]?.price
+              amount * conversionResult // <-- This will now correctly use the numerical price
             )}{" "}
             {toCurrency}
           </p>
