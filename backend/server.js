@@ -43,6 +43,35 @@ const logger = winston.createLogger({
         }),
     ],
 });
+// ----------------------------------------------------
+// --- START OF CORS CONFIGURATION CHANGES ---
+// ----------------------------------------------------
+
+const allowedOrigins = [
+    'http://localhost:5173', // For your local frontend development
+    'https://crypto-tracker-six-pink.vercel.app' // <-- IMPORTANT: REPLACE WITH YOUR ACTUAL DEPLOYED VERCEL FRONTEND URL
+];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps, Postman, or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+            // For better debugging, you might log the blocked origin
+            logger.warn(`CORS block: Origin '${origin}' not allowed.`); 
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed HTTP methods
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CMC_PRO_API_KEY'], // Specify allowed headers
+    credentials: true // Allow cookies to be sent (if you ever use them, though unlikely for this app)
+}));
+
+// ----------------------------------------------------
+// --- END OF CORS CONFIGURATION CHANGES ---
+// ----------------------------------------------------
 
 app.use(cors()) // --- Enabling CORS for the backend server
 app.use(express.json())  // --- Allowing express to parse JSON data
